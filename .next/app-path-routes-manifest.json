@@ -1,0 +1,12 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/page": "/admin",
+  "/api/admin/orders/[ref]/status/route": "/api/admin/orders/[ref]/status",
+  "/api/admin/orders/route": "/api/admin/orders",
+  "/api/checkout/route": "/api/checkout",
+  "/api/health/route": "/api/health",
+  "/api/hubtel/callback/route": "/api/hubtel/callback",
+  "/api/orders/[ref]/route": "/api/orders/[ref]",
+  "/page": "/"
+}

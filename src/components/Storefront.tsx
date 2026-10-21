@@ -1,0 +1,723 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { PRODUCT_CATALOG, STATUS_LABELS, formatPrice } from "@/lib/constants";
+import { OrderStatus } from "@/lib/types";
+
+export default function Storefront() {
+  const searchParams = useSearchParams();
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [isToastVisible, setIsToastVisible] = useState(false);
+
+  // Checkout form state
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerLocation, setCustomerLocation] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
+
+  // Tracking form state
+  const [trackingReference, setTrackingReference] = useState("");
+  const [trackingPhone, setTrackingPhone] = useState("");
+  const [trackingMessage, setTrackingMessage] = useState("");
+  const [trackingResult, setTrackingResult] = useState<{
+    reference: string;
+    status: string;
+    total: number;
+    items: { name: string; quantity: number }[];
+  } | null>(null);
+  const [isTracking, startTransition] = useTransition();
+
+  const currentYear = new Date().getFullYear();
+
+  const cartEntries = Object.entries(cart).filter(([, q]) => q > 0);
+  const cartItemCount = cartEntries.reduce((sum, [, q]) => sum + q, 0);
+  const cartTotal = cartEntries.reduce((sum, [key, q]) => sum + (PRODUCT_CATALOG[key]?.price || 35) * q, 0);
+
+  function showToast(message: string) {
+    setToastMessage(message);
+    setIsToastVisible(true);
+    setTimeout(() => {
+      setIsToastVisible(false);
+    }, 2800);
+  }
+
+  function updateQuantity(key: string, diff: number) {
+    setCart((prev) => {
+      const current = prev[key] || 0;
+      const next = current + diff;
+      if (next <= 0) {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      }
+      if (next > 99) return prev;
+      return { ...prev, [key]: next };
+    });
+  }
+
+  function handleAddToCart(key: string) {
+    updateQuantity(key, 1);
+    setIsCartOpen(true);
+  }
+
+  // Handle URL params and session storage reference
+  useEffect(() => {
+    const orderParam = searchParams.get("order");
+    const cancelledParam = searchParams.get("cancelled");
+    const lastOrder = typeof window !== "undefined" ? sessionStorage.getItem("maxwellina-last-order") : null;
+
+    if (orderParam || cancelledParam) {
+      const ref = orderParam || cancelledParam || "";
+      setTrackingReference(ref);
+      const trackElem = document.getElementById("track");
+      if (trackElem) {
+        trackElem.scrollIntoView({ behavior: "smooth" });
+      }
+      if (cancelledParam) {
+        showToast("Your order is saved. You can return to checkout whenever you're ready.");
+      } else {
+        showToast(`Order ${ref} is ready to track. Enter your phone number to check its status.`);
+      }
+      sessionStorage.removeItem("maxwellina-last-order");
+      window.history.replaceState({}, "", "/#track");
+    } else if (lastOrder) {
+      setTrackingReference(lastOrder);
+    }
+  }, [searchParams]);
+
+  // Handle escape key to close cart or modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsCartOpen(false);
+        setIsCheckoutOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Prevent background scroll when drawer or modal is open
+  useEffect(() => {
+    if (isCartOpen || isCheckoutOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [isCartOpen, isCheckoutOpen]);
+
+  async function handleCheckoutSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const orderItems = cartEntries.map(([product, quantity]) => ({ product, quantity }));
+    if (orderItems.length === 0) {
+      setCheckoutError("Add a mix to your order before continuing.");
+      return;
+    }
+
+    setIsSubmittingCheckout(true);
+    setCheckoutError("");
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: customerName,
+          phone: customerPhone,
+          location: customerLocation,
+          items: orderItems
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "We couldn't start your checkout. Please try again.");
+      }
+
+      sessionStorage.setItem("maxwellina-last-order", result.reference);
+      window.location.assign(result.checkoutUrl);
+    } catch (err: any) {
+      setCheckoutError(err.message || "Failed to proceed to checkout.");
+      setIsSubmittingCheckout(false);
+    }
+  }
+
+  async function handleTrackSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const ref = trackingReference.trim().toUpperCase();
+    if (!ref || !trackingPhone) return;
+
+    setTrackingMessage("Looking up your order…");
+    setTrackingResult(null);
+
+    startTransition(async () => {
+      try {
+        const response = await fetch(
+          `/api/orders/${encodeURIComponent(ref)}?phone=${encodeURIComponent(trackingPhone.trim())}`
+        );
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "We couldn't find an order with those details.");
+        }
+        setTrackingResult(result);
+        setTrackingMessage("");
+      } catch (err: any) {
+        setTrackingMessage(err.message || "We couldn't find an order with those details.");
+      }
+    });
+  }
+
+  return (
+    <>
+      <div className="announcement">
+        <span>GOOD FOOD, MADE SIMPLE</span>
+        <span>Order online · Pay securely with Hubtel</span>
+      </div>
+
+      <header className="site-header">
+        <Link className="brand" href="#home" aria-label="Maxwellina Foods home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Maxwellina Foods" />
+        </Link>
+        <nav className="main-nav" aria-label="Main navigation">
+          <a href="#products">Our mixes</a>
+          <a href="#story">Our story</a>
+          <a href="#how-it-works">How to order</a>
+          <a href="#track">Track order</a>
+        </nav>
+        <button
+          className="cart-toggle"
+          id="cart-open"
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          aria-label={`Open your order, ${cartItemCount} ${cartItemCount === 1 ? "item" : "items"}`}
+          aria-expanded={isCartOpen}
+        >
+          Your order <span id="cart-count">{cartItemCount}</span>
+        </button>
+        <a className="header-order" href="#products">
+          Shop the mixes <span aria-hidden="true">↗</span>
+        </a>
+      </header>
+
+      <main>
+        {/* Hero Section */}
+        <section className="hero" id="home">
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <span className="eyebrow-line"></span> A little goodness goes a long way
+            </p>
+            <h1>
+              Homemade<br />
+              goodness,<br />
+              <em>made easy.</em>
+            </h1>
+            <p className="hero-description">
+              Make the moments around your table a little more delicious. Our ready-to-make mixes
+              bring warm, homemade favourites within easy reach.
+            </p>
+            <div className="hero-actions">
+              <a className="button button-dark" href="#products">
+                Find your favourite <span aria-hidden="true">↗</span>
+              </a>
+              <a className="text-link" href="#story">
+                Get to know us <span aria-hidden="true">↓</span>
+              </a>
+            </div>
+            <div className="hero-note">
+              <span className="note-sparkle">✳</span>
+              <span>
+                Thoughtfully made for breakfast, sharing<br />
+                and all the little in-between moments.
+              </span>
+            </div>
+          </div>
+          <div className="hero-visual">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="hero-food"
+              src="/IMG-20261020-WA0015.jpg"
+              alt="Freshly made golden bofrot ready to share"
+            />
+            <div className="hero-sticker">
+              <span>JUST</span>
+              <strong>add<br />water</strong>
+              <span>and enjoy ✳</span>
+            </div>
+            <div className="hero-caption">
+              <span>MADE WITH LOVE</span>
+              <span>FROM OUR KITCHEN TO YOURS</span>
+            </div>
+          </div>
+          <div className="hero-side-label" aria-hidden="true">
+            MAXWELLINA FOODS · GHANA
+          </div>
+        </section>
+
+        {/* Promise Strip */}
+        <section className="promise-strip" aria-label="Our promise">
+          <span>GOOD FOOD, WITHOUT THE FUSS</span>
+          <span className="strip-star">✳</span>
+          <span>MADE FOR YOUR MOMENTS</span>
+          <span className="strip-star">✳</span>
+          <span>JUST ADD A LITTLE LOVE</span>
+          <span className="strip-star">✳</span>
+          <span>GOOD FOOD, WITHOUT THE FUSS</span>
+        </section>
+
+        {/* Products Section */}
+        <section className="products section-wrap" id="products">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">
+                <span className="eyebrow-line"></span> The good stuff
+              </p>
+              <h2>
+                A mix for every<br />
+                <em>kind of morning.</em>
+              </h2>
+            </div>
+            <p>Two simple favourites. A little less prep, a lot more time to enjoy what you make.</p>
+          </div>
+          <div className="product-grid">
+            {/* Bofrot Mix */}
+            <article className="product-card product-bofrot">
+              <div className="product-image">
+                <span className="product-tag">THE GHANAIAN FAVOURITE</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/file_00000000407881f5a22c99385e36519a.png"
+                  alt="Maxwellina Bofrot Mix, 500 grams"
+                />
+              </div>
+              <div className="product-info">
+                <div className="product-title-row">
+                  <div>
+                    <p className="product-kicker">SOFT · GOLDEN · DELICIOUS</p>
+                    <h3>Bofrot Mix</h3>
+                  </div>
+                  <span className="product-price">GH₵35</span>
+                </div>
+                <p className="product-description">
+                  Golden, fluffy bofrot made simple. Just add water, fry and share the goodness.
+                </p>
+                <div className="product-bottom">
+                  <span className="product-weight">500 g · Just add water</span>
+                  <button
+                    className="add-button"
+                    type="button"
+                    onClick={() => handleAddToCart("bofrot")}
+                  >
+                    Add to order <span aria-hidden="true">＋</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            {/* Pancake Mix */}
+            <article className="product-card product-pancake">
+              <div className="product-image">
+                <span className="product-tag">A BRIGHTER BREAKFAST</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/file_00000000230881f4b29e4d285a91ba27.png"
+                  alt="Maxwellina Pancake Mix, 500 grams"
+                />
+              </div>
+              <div className="product-info">
+                <div className="product-title-row">
+                  <div>
+                    <p className="product-kicker">LIGHT · FLUFFY · LOVELY</p>
+                    <h3>Pancake Mix</h3>
+                  </div>
+                  <span className="product-price">GH₵35</span>
+                </div>
+                <p className="product-description">
+                  A stack of soft, fluffy pancakes is never far away. Just add an egg and get flipping.
+                </p>
+                <div className="product-bottom">
+                  <span className="product-weight">500 g · Just add egg</span>
+                  <button
+                    className="add-button"
+                    type="button"
+                    onClick={() => handleAddToCart("pancake")}
+                  >
+                    Add to order <span aria-hidden="true">＋</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+          <p className="price-note">One pack, GH₵35. Mix and match your favourites.</p>
+        </section>
+
+        {/* Story Section */}
+        <section className="story-section" id="story">
+          <div className="story-photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/IMG-20261020-WA0016.jpg"
+              alt="Pancakes and fresh fruit make a lovely breakfast"
+            />
+          </div>
+          <div className="story-copy">
+            <p className="eyebrow">
+              <span className="eyebrow-line"></span> A little about us
+            </p>
+            <h2>
+              Good things<br />
+              start <em>at home.</em>
+            </h2>
+            <p>
+              At Maxwellina Foods, we believe making something delicious should feel simple,
+              convenient and joyful. That&apos;s why we make quality bofrot and pancake mixes to
+              help you spend less time preparing and more time enjoying.
+            </p>
+            <p>
+              For slow breakfasts, family gatherings or a little treat just because — we&apos;re
+              here to make homemade goodness easier.
+            </p>
+            <a className="text-link" href="#products">
+              Bring home a mix <span aria-hidden="true">↗</span>
+            </a>
+            <div className="story-signoff">
+              <span className="signoff-mark">✳</span>
+              <span>
+                MADE WITH CARE<br />
+                <strong>Maxwellina Foods</strong>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Steps / How It Works */}
+        <section className="steps-section section-wrap" id="how-it-works">
+          <div className="steps-intro">
+            <p className="eyebrow">
+              <span className="eyebrow-line"></span> Easy as one, two, yum
+            </p>
+            <h2>
+              Your next favourite<br />
+              is just <em>three steps away.</em>
+            </h2>
+          </div>
+          <div className="steps-grid">
+            <article className="step-card">
+              <span className="step-number">01</span>
+              <span className="step-icon">✳</span>
+              <h3>Pick your mix</h3>
+              <p>Choose bofrot, pancakes or one of each. Every pack is GH₵35.</p>
+            </article>
+            <article className="step-card">
+              <span className="step-number">02</span>
+              <span className="step-icon">♡</span>
+              <h3>Pay with Hubtel</h3>
+              <p>Place your order and complete your payment securely on Hubtel.</p>
+            </article>
+            <article className="step-card">
+              <span className="step-number">03</span>
+              <span className="step-icon">⌂</span>
+              <h3>Enjoy the goodness</h3>
+              <p>We’ll be in touch to confirm your order and delivery arrangements.</p>
+            </article>
+          </div>
+        </section>
+
+        {/* Track Order Section */}
+        <section className="track-section" id="track">
+          <div className="track-copy">
+            <p className="eyebrow">
+              <span className="eyebrow-line"></span> We&apos;ll keep you posted
+            </p>
+            <h2>
+              Wondering where<br />
+              your order <em>is?</em>
+            </h2>
+            <p>Enter the order code from checkout and the phone number you used when ordering.</p>
+          </div>
+          <form className="track-form" onSubmit={handleTrackSubmit}>
+            <label htmlFor="tracking-reference">Your order code</label>
+            <input
+              id="tracking-reference"
+              name="reference"
+              type="text"
+              placeholder="MW-XXXXXXXXXXXX"
+              value={trackingReference}
+              onChange={(e) => setTrackingReference(e.target.value)}
+              autoComplete="off"
+              required
+            />
+            <label htmlFor="tracking-phone">Phone number used at checkout</label>
+            <input
+              id="tracking-phone"
+              name="phone"
+              type="tel"
+              placeholder="e.g. 024 123 4567"
+              value={trackingPhone}
+              onChange={(e) => setTrackingPhone(e.target.value)}
+              autoComplete="tel"
+              required
+            />
+            <button className="button button-dark" type="submit" disabled={isTracking}>
+              {isTracking ? "Checking…" : <>Track my order <span aria-hidden="true">↗</span></>}
+            </button>
+            {trackingMessage && (
+              <p className="track-message" role="status" aria-live="polite">
+                {trackingMessage}
+              </p>
+            )}
+            {trackingResult && (
+              <div className="tracking-result">
+                <strong>{STATUS_LABELS[trackingResult.status] || "Order update"}</strong>
+                <p>
+                  {trackingResult.reference} ·{" "}
+                  {trackingResult.items.map((it) => `${it.quantity} × ${it.name}`).join(", ")} ·{" "}
+                  {formatPrice(trackingResult.total)}
+                  {trackingResult.status === "awaiting_payment"
+                    ? " — complete your payment to confirm the order."
+                    : ""}
+                </p>
+              </div>
+            )}
+          </form>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="site-footer">
+        <div className="footer-main">
+          <Link className="footer-brand" href="#home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="Maxwellina Foods" />
+          </Link>
+          <p>
+            Making homemade goodness easier,<br />
+            one delicious moment at a time.
+          </p>
+          <a className="footer-shop" href="#products">
+            Shop our mixes <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+        <div className="footer-bottom">
+          <span>
+            © {currentYear} Maxwellina Foods. Made with care in Ghana.
+          </span>
+          <Link href="/admin">Owner sign in</Link>
+          <a href="#home">Back to top ↑</a>
+        </div>
+      </footer>
+
+      {/* Cart Drawer & Backdrop */}
+      {isCartOpen && (
+        <div
+          className="cart-backdrop"
+          onClick={() => setIsCartOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`cart-drawer ${isCartOpen ? "is-open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cart-title"
+        aria-hidden={!isCartOpen}
+      >
+        <div className="cart-header">
+          <div>
+            <p className="eyebrow">A little goodness awaits</p>
+            <h2 id="cart-title">Your order</h2>
+          </div>
+          <button
+            className="close-cart"
+            type="button"
+            aria-label="Close order"
+            onClick={() => setIsCartOpen(false)}
+          >
+            ×
+          </button>
+        </div>
+        <div className="cart-content">
+          {cartEntries.length === 0 ? (
+            <div className="empty-cart">
+              <span>✳</span>
+              <p>Your basket is waiting for something lovely.</p>
+              <a href="#products" onClick={() => setIsCartOpen(false)}>
+                Find a mix
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="cart-items">
+                {cartEntries.map(([key, qty]) => {
+                  const product = PRODUCT_CATALOG[key];
+                  if (!product) return null;
+                  return (
+                    <div className="cart-item" key={key}>
+                      <div>
+                        <p className="cart-item-title">{product.name}</p>
+                        <span className="cart-item-price">
+                          {formatPrice(product.price)} each
+                        </span>
+                      </div>
+                      <div className="quantity-controls">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(key, -1)}
+                          aria-label={`Remove one ${product.name}`}
+                        >
+                          −
+                        </button>
+                        <span>{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(key, 1)}
+                          aria-label={`Add one ${product.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="cart-summary">
+                <div className="cart-total">
+                  <span>Product total</span>
+                  <strong>{formatPrice(cartTotal)}</strong>
+                </div>
+                <p>
+                  Product total only. Delivery arrangements and any fee will be confirmed with you
+                  separately.
+                </p>
+                <button
+                  className="button button-dark checkout-button"
+                  type="button"
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setCheckoutError("");
+                    setIsCheckoutOpen(true);
+                  }}
+                >
+                  Continue to checkout <span aria-hidden="true">↗</span>
+                </button>
+                <p className="secure-note">Secure payment powered by Hubtel</p>
+              </div>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Checkout Modal */}
+      {isCheckoutOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsCheckoutOpen(false);
+          }}
+        >
+          <div className="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+            <form className="checkout-form" onSubmit={handleCheckoutSubmit}>
+              <div className="dialog-header">
+                <div>
+                  <p className="eyebrow">Almost time for something delicious</p>
+                  <h2 id="checkout-title">Where should we reach you?</h2>
+                </div>
+                <button
+                  className="close-dialog"
+                  type="button"
+                  onClick={() => setIsCheckoutOpen(false)}
+                  aria-label="Close checkout"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="checkout-total">
+                <span>Your product total</span>
+                <strong>{formatPrice(cartTotal)}</strong>
+              </div>
+
+              <label htmlFor="customer-name">Your name</label>
+              <input
+                id="customer-name"
+                name="name"
+                type="text"
+                maxLength={80}
+                autoComplete="name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                required
+              />
+
+              <label htmlFor="customer-phone">Phone number</label>
+              <input
+                id="customer-phone"
+                name="phone"
+                type="tel"
+                maxLength={24}
+                autoComplete="tel"
+                placeholder="e.g. 024 123 4567"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                required
+              />
+
+              <label htmlFor="customer-location">
+                Town or delivery address <span>(optional)</span>
+              </label>
+              <textarea
+                id="customer-location"
+                name="location"
+                rows={2}
+                maxLength={240}
+                autoComplete="street-address"
+                placeholder="Where would you like your order?"
+                value={customerLocation}
+                onChange={(e) => setCustomerLocation(e.target.value)}
+              />
+
+              <p className="delivery-note">
+                Product total only. We’ll confirm delivery arrangements and any fee with you before
+                dispatch.
+              </p>
+
+              {checkoutError && (
+                <p className="checkout-error" role="alert" aria-live="assertive">
+                  {checkoutError}
+                </p>
+              )}
+
+              <button
+                className="button checkout-submit"
+                type="submit"
+                disabled={isSubmittingCheckout}
+              >
+                {isSubmittingCheckout ? (
+                  "Connecting to secure checkout…"
+                ) : (
+                  <>Continue to secure payment <span aria-hidden="true">↗</span></>
+                )}
+              </button>
+              <p className="secure-note">Your payment is securely handled by Hubtel.</p>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast */}
+      <div
+        className={`toast ${isToastVisible ? "is-visible" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        {toastMessage}
+      </div>
+    </>
+  );
+}
