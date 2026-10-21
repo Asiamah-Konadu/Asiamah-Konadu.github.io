@@ -1,6 +1,8 @@
 # Maxwellina Foods
 
-A responsive storefront for Maxwellina Foods' bofrot and pancake mixes, with online orders, Hubtel-hosted checkout, order tracking, and a private order-management page.
+A simple online store for Maxwellina Foods' bofrot and pancake mixes. Customers can order and track orders, and the owner can manage orders privately.
+
+The customer-facing site can be built in Canva Code. Canva will call this project's API for orders. The API runs on Vercel, uses Prisma to save orders in Neon Postgres, and handles Hubtel checkout. Keep payment details and owner access on the server; never put them in Canva code.
 
 ## Run locally
 
@@ -12,23 +14,38 @@ cp .env.example .env
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Without Hubtel credentials the catalogue and site remain available, but checkout returns a clear setup message. Local orders are stored in `data/orders.json` unless `DATABASE_URL` is set.
+Open [http://localhost:3000](http://localhost:3000). Without Hubtel credentials the catalogue and site remain available, but checkout asks customers to contact Maxwellina Foods. Local orders are stored in `data/orders.json` unless `DATABASE_URL` is set. With `DATABASE_URL`, Prisma stores them in Postgres.
 
 ## Deploy to Vercel
 
-This repository includes a Vercel API function adapter and serves the storefront files as static assets. Order data is stored in Neon Postgres because Vercel function filesystems are not persistent.
+This repository includes a Vercel API function adapter. Order data must be stored in Neon Postgres because Vercel function files are not permanent.
 
 1. Create a Neon Postgres database and copy its connection string.
-2. Import this repository into Vercel. Vercel detects the `api/` function and serves the site files from the project root.
-3. Add these environment variables to the Vercel project:
+2. Before the first deploy, apply the database migration from your computer:
+   ```sh
+   DATABASE_URL="your-Neon-connection-string" npx prisma migrate deploy
+   ```
+   This also works with the existing `orders` table created by the previous version.
+3. Import this repository into Vercel. Vercel detects the `api/` function and serves the site files from the project root.
+4. Add these environment variables to the Vercel project:
    - `DATABASE_URL`: the Neon Postgres connection string.
    - `PUBLIC_BASE_URL`: the public HTTPS URL for the site.
+   - `FRONTEND_ORIGINS`: the Canva site's exact published URL (for example, `https://example.my.canva.site`).
    - `HUBTEL_CLIENT_ID`, `HUBTEL_CLIENT_SECRET`, and `HUBTEL_MERCHANT_ACCOUNT_NUMBER`: credentials from Hubtel.
    - `ADMIN_TOKEN`: a long, private owner access token.
-4. Redeploy after setting the variables. The app creates its `orders` table in Neon on its first API request.
-5. Configure the Hubtel callback URL as `https://your-domain.example/api/hubtel/callback`.
+5. Redeploy after setting the variables.
+6. Configure the Hubtel callback URL as `https://your-domain.example/api/hubtel/callback`.
 
-The database role must be allowed to create the `orders` table. Keep the database URL, Hubtel credentials, and owner token in server-side Vercel environment variables only. The Vercel function returns a clear `503` API error if `DATABASE_URL` is missing rather than attempting to write orders to ephemeral storage.
+Keep the database URL, Hubtel credentials, and owner token in Vercel's server-side environment variables only. If `DATABASE_URL` is missing, the API cannot save orders.
+
+## Connect the Canva Code site
+
+The Canva site should send customer requests to the Vercel API:
+
+- Start checkout with `POST /api/checkout` and send the customer's `name`, `phone`, optional `location`, and `items` (product keys `bofrot` or `pancake`, plus a quantity). The response includes a `checkoutUrl`; send the customer to that link to pay.
+- Track an order with `GET /api/orders/{reference}?phone={phone}`.
+
+Keep owner tools on the private `/admin.html` page. Do not put the owner token in Canva. Set `FRONTEND_ORIGINS` to the exact Canva site URL so browsers can call the API; add multiple URLs separated by commas if needed. Do not use `*` or put Hubtel credentials in Canva. We can verify whether Canva's published site supports these API requests once you share the project.
 
 ## Enable Hubtel checkout
 
@@ -42,7 +59,7 @@ HUBTEL_MERCHANT_ACCOUNT_NUMBER=your-merchant-account-number
 ADMIN_TOKEN=a-long-random-private-token
 ```
 
-Configure the Hubtel merchant account for its online checkout product. The app creates a hosted checkout session on the server, uses the configured public URL for the return, cancellation, and payment callback URLs, and checks the transaction status with Hubtel before marking an order paid. Merchant credentials and the owner token must never be placed in frontend code or committed.
+Configure the Hubtel merchant account for its online checkout product. The server creates a hosted checkout session, uses the configured public URL for return, cancellation, and payment callback URLs, and checks the transaction status with Hubtel before marking an order paid. Merchant credentials and the owner token must never be placed in Canva code or committed.
 
 ## Orders
 

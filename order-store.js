@@ -2,31 +2,16 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { neon } = require("@neondatabase/serverless");
+const { PrismaClient } = require("@prisma/client");
 
 const ROOT = __dirname;
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, "data"));
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
-const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
-let tableReady;
-
-function ensureOrdersTable() {
-  if (!tableReady) {
-    tableReady = sql`CREATE TABLE IF NOT EXISTS orders (
-      reference TEXT PRIMARY KEY,
-      data JSONB NOT NULL
-    )`.catch((error) => {
-      tableReady = undefined;
-      throw error;
-    });
-  }
-  return tableReady;
-}
+const prisma = process.env.DATABASE_URL ? new PrismaClient() : null;
 
 async function loadOrders() {
-  if (sql) {
-    await ensureOrdersTable();
-    const rows = await sql`SELECT data FROM orders`;
+  if (prisma) {
+    const rows = await prisma.order.findMany({ select: { data: true } });
     return rows.map((row) => row.data);
   }
 
@@ -40,13 +25,16 @@ async function loadOrders() {
 }
 
 async function saveOrders(orders) {
-  if (sql) {
-    await ensureOrdersTable();
-    for (const order of orders) {
-      await sql`INSERT INTO orders (reference, data)
-        VALUES (${order.reference}, ${JSON.stringify(order)}::jsonb)
-        ON CONFLICT (reference) DO UPDATE SET data = EXCLUDED.data`;
-    }
+  if (prisma) {
+    await prisma.$transaction(
+      orders.map((order) =>
+        prisma.order.upsert({
+          where: { reference: order.reference },
+          create: { reference: order.reference, data: order },
+          update: { data: order }
+        })
+      )
+    );
     return;
   }
 

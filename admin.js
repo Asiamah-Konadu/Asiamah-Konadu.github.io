@@ -5,8 +5,15 @@ const statuses = [
   ["delivered", "Delivered"],
   ["cancelled", "Cancelled"]
 ];
-const formatPrice = (amount) => `GH₵${Number(amount).toFixed(2).replace(/\.00$/, "")}`;
+const formatPrice = (amount) => "GH₵" + Number(amount).toFixed(2).replace(/\.00$/, "");
 let accessToken = "";
+
+function authHeaders(extra = {}) {
+  return {
+    ...extra,
+    Authorization: "Bearer " + accessToken
+  };
+}
 
 document.querySelector("#current-year").textContent = new Date().getFullYear();
 
@@ -15,7 +22,7 @@ async function loadOrders() {
   const list = document.querySelector("#order-list");
   message.textContent = "Loading orders…";
   try {
-    const response = await fetch("/api/admin/orders", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await fetch("/api/admin/orders", { headers: authHeaders() });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to load orders.");
     message.textContent = "";
@@ -56,13 +63,13 @@ function createOrderCard(order) {
   const details = document.createElement("div");
   details.className = "order-card-details";
   const contact = document.createElement("p");
-  contact.textContent = `${order.name} · ${order.phone}`;
+  contact.textContent = order.name + " · " + order.phone;
   const items = document.createElement("p");
-  items.textContent = order.items.map((item) => `${item.quantity} × ${item.name}`).join(", ");
+  items.textContent = order.items.map((item) => item.quantity + " × " + item.name).join(", ");
   details.append(contact, items);
   if (order.location) {
     const location = document.createElement("p");
-    location.textContent = `Location: ${order.location}`;
+    location.textContent = "Location: " + order.location;
     details.append(location);
   }
 
@@ -70,15 +77,15 @@ function createOrderCard(order) {
   current.className = "status-row";
   const paymentText = document.createElement("span");
   paymentText.className = "status-pill";
-  paymentText.textContent = `${order.paymentStatus} · ${order.status.replaceAll("_", " ")}`;
+  paymentText.textContent = order.paymentStatus + " · " + order.status.replaceAll("_", " ");
   current.append(paymentText);
   if (!["awaiting_payment", "payment_failed"].includes(order.status)) {
     const label = document.createElement("label");
     label.textContent = "Update order status";
-    label.htmlFor = `status-${order.reference}`;
+    label.htmlFor = "status-" + order.reference;
     const select = document.createElement("select");
-    select.id = `status-${order.reference}`;
-    select.setAttribute("aria-label", `Update status for ${order.reference}`);
+    select.id = "status-" + order.reference;
+    select.setAttribute("aria-label", "Update status for " + order.reference);
     const currentOption = document.createElement("option");
     currentOption.value = order.status;
     currentOption.textContent = order.status.replaceAll("_", " ");
@@ -92,9 +99,9 @@ function createOrderCard(order) {
     select.addEventListener("change", async () => {
       select.disabled = true;
       try {
-        const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.reference)}/status`, {
+        const response = await fetch("/api/admin/orders/" + encodeURIComponent(order.reference) + "/status", {
           method: "PATCH",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ status: select.value })
         });
         const result = await response.json();
@@ -117,7 +124,7 @@ document.querySelector("#admin-login-form").addEventListener("submit", async (ev
   const message = document.querySelector("#admin-login-message");
   message.textContent = "Checking access…";
   try {
-    const response = await fetch("/api/admin/orders", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await fetch("/api/admin/orders", { headers: authHeaders() });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to sign in.");
     document.querySelector("#admin-login").hidden = true;

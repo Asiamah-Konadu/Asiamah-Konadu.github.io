@@ -386,6 +386,24 @@ async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
     if (url.pathname.startsWith("/api/")) {
+      const origin = request.headers.origin;
+      if (origin) {
+        const allowedOrigins = (process.env.FRONTEND_ORIGINS || "")
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+        if (!allowedOrigins.includes(origin)) {
+          return sendJson(response, 403, { error: "This website is not allowed to use the API." });
+        }
+        response.setHeader("Access-Control-Allow-Origin", origin);
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+        response.setHeader("Vary", "Origin");
+        if (request.method === "OPTIONS") {
+          response.writeHead(204);
+          return response.end();
+        }
+      }
       if (process.env.VERCEL && !process.env.DATABASE_URL) {
         return sendJson(response, 503, { error: "Order storage is not configured. Set DATABASE_URL to a Neon Postgres connection string." });
       }
