@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   PRODUCT_CATALOG,
@@ -116,8 +117,7 @@ export default function Storefront() {
 
       <header className="site-header">
         <Link className="brand" href="#home" aria-label="Maxwellina Foods home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="Maxwellina Foods" />
+          <Image src="/logo.svg" alt="Maxwellina Foods" width={105} height={49} priority />
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
           <a href="#products">Our mixes</a>
@@ -368,8 +368,7 @@ export default function Storefront() {
       <footer className="site-footer">
         <div className="footer-main">
           <Link className="footer-brand" href="#home">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="Maxwellina Foods" />
+            <Image src="/logo.svg" alt="Maxwellina Foods" width={102} height={50} />
           </Link>
           <p>
             Making homemade goodness easier,<br />
