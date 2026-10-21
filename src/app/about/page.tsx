@@ -85,7 +85,6 @@ export default function AboutPage() {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Maxwellina Foods. Made with care in Ghana.</span>
           <Link href="/">Shop</Link>
-          <Link href="/admin">Owner sign in</Link>
         </div>
       </footer>
     </>

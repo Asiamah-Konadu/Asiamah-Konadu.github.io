@@ -12,7 +12,7 @@ export function proxy(request: NextRequest) {
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self'",
     "base-uri 'self'",
-    "form-action 'self' https://pay.hubtel.com https://*.hubtel.com",
+    "form-action 'self'",
     "frame-ancestors 'none'"
   ].join("; ");
 

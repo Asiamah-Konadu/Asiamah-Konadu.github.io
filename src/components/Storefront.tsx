@@ -1,24 +1,18 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   PRODUCT_CATALOG,
-  STATUS_LABELS,
   WHATSAPP_ORDER_NUMBER,
   formatPrice,
   normalizePhone
 } from "@/lib/constants";
-import { OrderStatus } from "@/lib/types";
 
 export default function Storefront() {
-  const searchParams = useSearchParams();
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [isToastVisible, setIsToastVisible] = useState(false);
 
   // Checkout form state
   const [customerName, setCustomerName] = useState("");
@@ -26,31 +20,11 @@ export default function Storefront() {
   const [customerLocation, setCustomerLocation] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
 
-  // Tracking form state
-  const [trackingReference, setTrackingReference] = useState("");
-  const [trackingPhone, setTrackingPhone] = useState("");
-  const [trackingMessage, setTrackingMessage] = useState("");
-  const [trackingResult, setTrackingResult] = useState<{
-    reference: string;
-    status: string;
-    total: number;
-    items: { name: string; quantity: number }[];
-  } | null>(null);
-  const [isTracking, startTransition] = useTransition();
-
   const currentYear = new Date().getFullYear();
 
   const cartEntries = Object.entries(cart).filter(([, q]) => q > 0);
   const cartItemCount = cartEntries.reduce((sum, [, q]) => sum + q, 0);
   const cartTotal = cartEntries.reduce((sum, [key, q]) => sum + (PRODUCT_CATALOG[key]?.price || 35) * q, 0);
-
-  function showToast(message: string) {
-    setToastMessage(message);
-    setIsToastVisible(true);
-    setTimeout(() => {
-      setIsToastVisible(false);
-    }, 2800);
-  }
 
   function updateQuantity(key: string, diff: number) {
     setCart((prev) => {
@@ -70,31 +44,6 @@ export default function Storefront() {
     updateQuantity(key, 1);
     setIsCartOpen(true);
   }
-
-  // Handle URL params and session storage reference
-  useEffect(() => {
-    const orderParam = searchParams.get("order");
-    const cancelledParam = searchParams.get("cancelled");
-    const lastOrder = typeof window !== "undefined" ? sessionStorage.getItem("maxwellina-last-order") : null;
-
-    if (orderParam || cancelledParam) {
-      const ref = orderParam || cancelledParam || "";
-      setTrackingReference(ref);
-      const trackElem = document.getElementById("track");
-      if (trackElem) {
-        trackElem.scrollIntoView({ behavior: "smooth" });
-      }
-      if (cancelledParam) {
-        showToast("Your order is saved. You can return to checkout whenever you're ready.");
-      } else {
-        showToast(`Order ${ref} is ready to track. Enter your phone number to check its status.`);
-      }
-      sessionStorage.removeItem("maxwellina-last-order");
-      window.history.replaceState({}, "", "/#track");
-    } else if (lastOrder) {
-      setTrackingReference(lastOrder);
-    }
-  }, [searchParams]);
 
   // Handle escape key to close cart or modal
   useEffect(() => {
@@ -158,31 +107,6 @@ export default function Storefront() {
     );
   }
 
-  async function handleTrackSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const ref = trackingReference.trim().toUpperCase();
-    if (!ref || !trackingPhone) return;
-
-    setTrackingMessage("Looking up your order…");
-    setTrackingResult(null);
-
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          `/api/orders/${encodeURIComponent(ref)}?phone=${encodeURIComponent(trackingPhone.trim())}`
-        );
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || "We couldn't find an order with those details.");
-        }
-        setTrackingResult(result);
-        setTrackingMessage("");
-      } catch (err: any) {
-        setTrackingMessage(err.message || "We couldn't find an order with those details.");
-      }
-    });
-  }
-
   return (
     <>
       <div className="announcement">
@@ -199,7 +123,6 @@ export default function Storefront() {
           <a href="#products">Our mixes</a>
           <Link href="/about">Our story</Link>
           <a href="#how-it-works">How to order</a>
-          <a href="#track">Track order</a>
         </nav>
         <button
           className="cart-toggle"
@@ -439,64 +362,6 @@ export default function Storefront() {
           </div>
         </section>
 
-        {/* Track Order Section */}
-        <section className="track-section" id="track">
-          <div className="track-copy">
-            <p className="eyebrow">
-              <span className="eyebrow-line"></span> We&apos;ll keep you posted
-            </p>
-            <h2>
-              Wondering where<br />
-              your order <em>is?</em>
-            </h2>
-            <p>For existing online orders, enter the order code and phone number used at checkout.</p>
-          </div>
-          <form className="track-form" onSubmit={handleTrackSubmit}>
-            <label htmlFor="tracking-reference">Your order code</label>
-            <input
-              id="tracking-reference"
-              name="reference"
-              type="text"
-              placeholder="MW-XXXXXXXXXXXX"
-              value={trackingReference}
-              onChange={(e) => setTrackingReference(e.target.value)}
-              autoComplete="off"
-              required
-            />
-            <label htmlFor="tracking-phone">Phone number used at checkout</label>
-            <input
-              id="tracking-phone"
-              name="phone"
-              type="tel"
-              placeholder="e.g. 024 123 4567"
-              value={trackingPhone}
-              onChange={(e) => setTrackingPhone(e.target.value)}
-              autoComplete="tel"
-              required
-            />
-            <button className="button button-dark" type="submit" disabled={isTracking}>
-              {isTracking ? "Checking…" : <>Track my order <span aria-hidden="true">↗</span></>}
-            </button>
-            {trackingMessage && (
-              <p className="track-message" role="status" aria-live="polite">
-                {trackingMessage}
-              </p>
-            )}
-            {trackingResult && (
-              <div className="tracking-result">
-                <strong>{STATUS_LABELS[trackingResult.status] || "Order update"}</strong>
-                <p>
-                  {trackingResult.reference} ·{" "}
-                  {trackingResult.items.map((it) => `${it.quantity} × ${it.name}`).join(", ")} ·{" "}
-                  {formatPrice(trackingResult.total)}
-                  {trackingResult.status === "awaiting_payment"
-                    ? " — complete your payment to confirm the order."
-                    : ""}
-                </p>
-              </div>
-            )}
-          </form>
-        </section>
       </main>
 
       {/* Footer */}
@@ -519,7 +384,6 @@ export default function Storefront() {
             © {currentYear} Maxwellina Foods. Made with care in Ghana.
           </span>
           <Link href="/about">About us</Link>
-          <Link href="/admin">Owner sign in</Link>
           <a href="#home">Back to top ↑</a>
         </div>
       </footer>
@@ -617,7 +481,7 @@ export default function Storefront() {
                 >
                   Continue to WhatsApp <span aria-hidden="true">↗</span>
                 </button>
-                <p className="secure-note">Payment and delivery details will be confirmed in WhatsApp.</p>
+                <p className="checkout-note">Payment and delivery details will be confirmed in WhatsApp.</p>
               </div>
             </>
           )}
@@ -710,20 +574,12 @@ export default function Storefront() {
               >
                 Send order on WhatsApp <span aria-hidden="true">↗</span>
               </button>
-              <p className="secure-note">WhatsApp will open with your order details ready to send.</p>
+              <p className="checkout-note">WhatsApp will open with your order details ready to send.</p>
             </form>
           </div>
         </div>
       )}
 
-      {/* Floating Toast */}
-      <div
-        className={`toast ${isToastVisible ? "is-visible" : ""}`}
-        role="status"
-        aria-live="polite"
-      >
-        {toastMessage}
-      </div>
     </>
   );
 }
