@@ -50,7 +50,15 @@ export default function Storefront() {
             restoredCart[key] = quantity;
           }
         }
-        setCart(restoredCart);
+        setCart((currentCart) => {
+          const mergedCart = { ...restoredCart };
+          for (const [key, quantity] of Object.entries(currentCart)) {
+            if (Object.hasOwn(PRODUCT_CATALOG, key)) {
+              mergedCart[key] = Math.min(99, (mergedCart[key] || 0) + quantity);
+            }
+          }
+          return mergedCart;
+        });
       }
     } catch (error) {
       console.error("Unable to restore the saved cart.", error);
@@ -180,7 +188,7 @@ export default function Storefront() {
           aria-label={`Open your order, ${cartItemCount} ${cartItemCount === 1 ? "item" : "items"}`}
           aria-expanded={isCartOpen}
         >
-          Your order <span id="cart-count">{cartItemCount}</span>
+          Your order <span id="cart-count" aria-live="polite">{cartItemCount}</span>
         </button>
         <a className="header-order" href="#products">
           Shop the mixes <span aria-hidden="true">↗</span>

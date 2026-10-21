@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 
 interface MobileMenuProps {
@@ -40,7 +41,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
         <span aria-hidden="true">{isOpen ? "×" : "☰"}</span>
         <span>Menu</span>
       </button>
-      {isOpen && (
+      {isOpen && createPortal(
         <div className="mobile-menu-layer">
           <button
             className="mobile-menu-backdrop"
@@ -68,7 +69,8 @@ export default function MobileMenu({ links }: MobileMenuProps) {
               ))}
             </nav>
           </aside>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
