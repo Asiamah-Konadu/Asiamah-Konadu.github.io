@@ -1,0 +1,12 @@
+{
+  "name": "maxwellina-foods",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Maxwellina Foods storefront and Hubtel checkout",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  }
+}
