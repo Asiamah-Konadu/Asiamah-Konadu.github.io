@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import MobileMenu from "@/components/MobileMenu";
 
 export const metadata = {
   title: "About Us — Maxwellina Foods",
@@ -21,6 +22,12 @@ export default function AboutPage() {
           <Link href="/">Home</Link>
           <Link href="/#products">Our mixes</Link>
         </nav>
+        <MobileMenu
+          links={[
+            { label: "Home", href: "/" },
+            { label: "Our mixes", href: "/#products" }
+          ]}
+        />
         <Link className="header-order" href="/#products">
           Shop the mixes <span aria-hidden="true">↗</span>
         </Link>

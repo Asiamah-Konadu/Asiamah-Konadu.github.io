@@ -29,6 +29,7 @@ a { color: inherit; }
 .main-nav a, .header-order { text-decoration: none; font-size: 11px; font-weight: 600; }
 .main-nav a { color: #49534a; transition: color .2s; }
 .main-nav a:hover, .footer-bottom a:hover { color: var(--gold); }
+.mobile-menu-toggle, .mobile-menu-layer { display: none; }
 
 .cart-toggle { display: inline-flex; align-items: center; gap: 8px; border: 0; padding: 9px 0; background: transparent; color: var(--green); font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .cart-toggle span { display: grid; min-width: 21px; height: 21px; place-items: center; border-radius: 50%; background: var(--lime); color: var(--deep-green); font-size: 9px; }
@@ -209,9 +210,17 @@ h2 { margin-bottom: 0; font-size: clamp(36px,4.2vw,54px); line-height: 1.06; }
   .announcement span:last-child { font-size: 7px; }
   .site-header { height: 66px; padding-inline: 5%; }
   .brand img { width: 82px; height: 42px; }
-  .main-nav { gap: 13px; }
-  .main-nav a { font-size: 9px; }
-  .main-nav a:nth-child(2), .main-nav a:nth-child(3) { display: none; }
+  .main-nav { display: none; }
+  .mobile-menu-toggle { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 8px 0; background: transparent; color: var(--green); font-size: 9px; font-weight: 700; cursor: pointer; }
+  .mobile-menu-toggle span:first-child { font-size: 18px; line-height: 1; }
+  .mobile-menu-layer { display: block; position: fixed; inset: 0; z-index: 30; }
+  .mobile-menu-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(14,27,18,.48); backdrop-filter: blur(2px); }
+  .mobile-menu-panel { width: min(340px, 86vw); height: 100dvh; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); position: absolute; top: 0; left: 0; background: var(--paper); box-shadow: 10px 0 50px rgba(0,0,0,.12); animation: mobile-menu-in .22s ease-out; }
+  .mobile-menu-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid var(--line); color: var(--green); font-family: var(--serif); font-size: 19px; }
+  .mobile-menu-heading button { border: 0; background: transparent; color: var(--green); font-size: 30px; cursor: pointer; line-height: 1; }
+  .mobile-menu-panel nav { display: flex; flex-direction: column; }
+  .mobile-menu-panel nav a { display: flex; justify-content: space-between; align-items: center; padding: 19px 0; border-bottom: 1px solid var(--line); color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+  .mobile-menu-panel nav a span { color: var(--gold); font-size: 16px; }
   .header-order { display: none; }
   .cart-toggle { gap: 5px; font-size: 8px; }
   .cart-toggle span { min-width: 18px; height: 18px; }
@@ -276,4 +285,8 @@ h2 { margin-bottom: 0; font-size: clamp(36px,4.2vw,54px); line-height: 1.06; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+@keyframes mobile-menu-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }

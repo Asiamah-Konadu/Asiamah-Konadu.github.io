@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import MobileMenu from "@/components/MobileMenu";
 import {
   PRODUCT_CATALOG,
   WHATSAPP_ORDER_NUMBER,
@@ -12,6 +13,7 @@ import {
 
 export default function Storefront() {
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartLoaded, setCartLoaded] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
@@ -26,6 +28,45 @@ export default function Storefront() {
   const cartEntries = Object.entries(cart).filter(([, q]) => q > 0);
   const cartItemCount = cartEntries.reduce((sum, [, q]) => sum + q, 0);
   const cartTotal = cartEntries.reduce((sum, [key, q]) => sum + (PRODUCT_CATALOG[key]?.price || 35) * q, 0);
+
+  useEffect(() => {
+    try {
+      const savedCart = window.localStorage.getItem("maxwellina-cart");
+      if (savedCart) {
+        const parsed: unknown = JSON.parse(savedCart);
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          throw new Error("Saved cart must be an object.");
+        }
+
+        const restoredCart: Record<string, number> = {};
+        for (const [key, quantity] of Object.entries(parsed)) {
+          if (
+            Object.hasOwn(PRODUCT_CATALOG, key) &&
+            typeof quantity === "number" &&
+            Number.isInteger(quantity) &&
+            quantity > 0 &&
+            quantity <= 99
+          ) {
+            restoredCart[key] = quantity;
+          }
+        }
+        setCart(restoredCart);
+      }
+    } catch (error) {
+      console.error("Unable to restore the saved cart.", error);
+    } finally {
+      setCartLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!cartLoaded) return;
+    try {
+      window.localStorage.setItem("maxwellina-cart", JSON.stringify(cart));
+    } catch (error) {
+      console.error("Unable to save the cart.", error);
+    }
+  }, [cart, cartLoaded]);
 
   function updateQuantity(key: string, diff: number) {
     setCart((prev) => {
@@ -124,6 +165,13 @@ export default function Storefront() {
           <Link href="/about">Our story</Link>
           <a href="#how-it-works">How to order</a>
         </nav>
+        <MobileMenu
+          links={[
+            { label: "Our mixes", href: "#products" },
+            { label: "Our story", href: "/about" },
+            { label: "How to order", href: "#how-it-works" }
+          ]}
+        />
         <button
           className="cart-toggle"
           id="cart-open"
