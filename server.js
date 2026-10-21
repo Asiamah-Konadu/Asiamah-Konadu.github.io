@@ -4,10 +4,9 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
+const { loadOrders, saveOrders } = require("./order-store");
 
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, "data");
-const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
@@ -45,22 +44,6 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml"
 };
 
-function loadOrders() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(ORDERS_FILE)) {
-    fs.writeFileSync(ORDERS_FILE, "[]\n", { mode: 0o600 });
-  }
-  const orders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8"));
-  if (!Array.isArray(orders)) throw new Error("Order store must contain an array.");
-  return orders;
-}
-
-function saveOrders(orders) {
-  const temporaryFile = `${ORDERS_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(temporaryFile, `${JSON.stringify(orders, null, 2)}\n`, { mode: 0o600 });
-  fs.renameSync(temporaryFile, ORDERS_FILE);
-}
-
 function sendJson(response, status, data) {
   response.writeHead(status, {
     "Cache-Control": "no-store",
@@ -71,6 +54,24 @@ function sendJson(response, status, data) {
 
 function readJson(request) {
   return new Promise((resolve, reject) => {
+    if (request.body !== undefined) {
+      try {
+        const body = Buffer.isBuffer(request.body) ? request.body.toString("utf8") : request.body;
+        if (typeof body === "string") {
+          if (Buffer.byteLength(body) > 16_384) {
+            return reject(Object.assign(new Error("Request body is too large."), { statusCode: 413 }));
+          }
+          return resolve(JSON.parse(body || "{}"));
+        }
+        if (body && typeof body === "object" && Buffer.byteLength(JSON.stringify(body)) > 16_384) {
+          return reject(Object.assign(new Error("Request body is too large."), { statusCode: 413 }));
+        }
+        return resolve(body && typeof body === "object" ? body : {});
+      } catch {
+        return reject(Object.assign(new Error("Request body must be valid JSON."), { statusCode: 400 }));
+      }
+    }
+
     let body = "";
     request.on("data", (chunk) => {
       body += chunk;
@@ -132,7 +133,7 @@ function findClientReference(payload) {
 
 async function updatePaymentStatus(reference) {
   if (!HUBTEL_CONFIGURED) return;
-  const orders = loadOrders();
+  const orders = await loadOrders();
   const order = orders.find((entry) => entry.reference === reference);
   if (!order || order.status !== "awaiting_payment") return;
   const url = new URL(`https://api-txnstatus.hubtel.com/transactions/${encodeURIComponent(HUBTEL_MERCHANT_ACCOUNT_NUMBER)}/status`);
@@ -148,7 +149,7 @@ async function updatePaymentStatus(reference) {
     order.paymentStatus = result;
     order.status = result === "paid" ? "paid" : "payment_failed";
     order.updatedAt = new Date().toISOString();
-    saveOrders(orders);
+    await saveOrders(orders);
   }
 }
 
@@ -233,7 +234,7 @@ async function handleApi(request, response, url) {
       items.push({ product: entry.product, name: PRODUCT_CATALOG[entry.product].name, quantity: entry.quantity, unitPrice: PRODUCT_CATALOG[entry.product].price });
     }
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-    const orders = loadOrders();
+    const orders = await loadOrders();
     const reference = `MW-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
     const order = {
       reference,
@@ -249,18 +250,18 @@ async function handleApi(request, response, url) {
       updatedAt: new Date().toISOString()
     };
     orders.push(order);
-    saveOrders(orders);
+    await saveOrders(orders);
     try {
       const checkoutUrl = await createCheckout(order);
       return sendJson(response, 201, { reference, checkoutUrl });
     } catch (error) {
-      const latestOrders = loadOrders();
+      const latestOrders = await loadOrders();
       const failedOrder = latestOrders.find((entry) => entry.reference === reference);
       if (failedOrder) {
         failedOrder.status = "payment_failed";
         failedOrder.paymentStatus = "checkout_error";
         failedOrder.updatedAt = new Date().toISOString();
-        saveOrders(latestOrders);
+        await saveOrders(latestOrders);
       }
       console.error("Hubtel checkout initiation failed:", error.message);
       return sendJson(response, 502, { error: "We couldn't connect to Hubtel. Your payment has not been taken; please try again shortly." });
@@ -271,7 +272,7 @@ async function handleApi(request, response, url) {
     const reference = decodeURIComponent(url.pathname.slice("/api/orders/".length)).toUpperCase();
     const phone = normalizePhone(url.searchParams.get("phone"));
     if (!phone) return sendJson(response, 400, { error: "Enter a valid Ghanaian phone number." });
-    const orders = loadOrders();
+    const orders = await loadOrders();
     const order = orders.find((entry) => entry.reference === reference && entry.phone === phone);
     if (!order) return sendJson(response, 404, { error: "We couldn't find an order with those details. Check your order code and phone number." });
     if (order.status === "awaiting_payment" && HUBTEL_CONFIGURED) {
@@ -282,7 +283,7 @@ async function handleApi(request, response, url) {
         return sendJson(response, 502, { error: "We couldn't refresh the payment status right now. Please try again shortly." });
       }
     }
-    const current = loadOrders().find((entry) => entry.reference === reference);
+    const current = (await loadOrders()).find((entry) => entry.reference === reference);
     return sendJson(response, 200, publicOrder(current || order));
   }
 
@@ -307,7 +308,7 @@ async function handleApi(request, response, url) {
   if (url.pathname.startsWith("/api/admin/")) {
     if (!requireAdmin(request, response)) return;
     if (request.method === "GET" && url.pathname === "/api/admin/orders") {
-      const orders = loadOrders().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const orders = (await loadOrders()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return sendJson(response, 200, { orders });
     }
     const match = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/status$/);
@@ -320,7 +321,7 @@ async function handleApi(request, response, url) {
       }
       const status = body.status;
       if (!ADMIN_STATUSES.has(status)) return sendJson(response, 400, { error: "Choose a valid fulfillment status." });
-      const orders = loadOrders();
+      const orders = await loadOrders();
       const order = orders.find((entry) => entry.reference === decodeURIComponent(match[1]));
       if (!order) return sendJson(response, 404, { error: "Order not found." });
       if (order.status === "awaiting_payment" || order.status === "payment_failed") {
@@ -328,7 +329,7 @@ async function handleApi(request, response, url) {
       }
       order.status = status;
       order.updatedAt = new Date().toISOString();
-      saveOrders(orders);
+      await saveOrders(orders);
       return sendJson(response, 200, { order });
     }
   }
@@ -377,24 +378,35 @@ function serveStatic(request, response, url) {
   fs.createReadStream(filePath).pipe(response);
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self' https://pay.hubtel.com https://*.hubtel.com; frame-ancestors 'none'");
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
-    if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
-    else serveStatic(request, response, url);
+    if (url.pathname.startsWith("/api/")) {
+      if (process.env.VERCEL && !process.env.DATABASE_URL) {
+        return sendJson(response, 503, { error: "Order storage is not configured. Set DATABASE_URL to a Neon Postgres connection string." });
+      }
+      await handleApi(request, response, url);
+    } else {
+      serveStatic(request, response, url);
+    }
   } catch (error) {
     console.error("Request failed:", error.message);
     if (!response.headersSent) sendJson(response, 500, { error: "Something went wrong. Please try again." });
     else response.destroy();
   }
-});
+}
 
-server.listen(PORT, () => {
-  console.log(`Maxwellina Foods is listening on port ${PORT}.`);
-  if (!HUBTEL_CONFIGURED) console.warn("Hubtel checkout is disabled until merchant credentials are configured.");
-  if (!ADMIN_TOKEN) console.warn("Owner order management is disabled until ADMIN_TOKEN is configured.");
-});
+if (require.main === module) {
+  const server = http.createServer(handleRequest);
+  server.listen(PORT, () => {
+    console.log(`Maxwellina Foods is listening on port ${PORT}.`);
+    if (!HUBTEL_CONFIGURED) console.warn("Hubtel checkout is disabled until merchant credentials are configured.");
+    if (!ADMIN_TOKEN) console.warn("Owner order management is disabled until ADMIN_TOKEN is configured.");
+  });
+}
+
+module.exports = handleRequest;

@@ -4,18 +4,35 @@ A responsive storefront for Maxwellina Foods' bofrot and pancake mixes, with onl
 
 ## Run locally
 
-Requires Node.js 20.12 or newer. Copy `.env.example` to `.env`, choose a long private `ADMIN_TOKEN`, and start the app:
+Requires Node.js 20.12 or newer. Install dependencies, copy `.env.example` to `.env`, choose a long private `ADMIN_TOKEN`, and start the app:
 
 ```sh
+npm install
 cp .env.example .env
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Without Hubtel credentials the catalogue and site remain available, but checkout returns a clear setup message.
+Open [http://localhost:3000](http://localhost:3000). Without Hubtel credentials the catalogue and site remain available, but checkout returns a clear setup message. Local orders are stored in `data/orders.json` unless `DATABASE_URL` is set.
+
+## Deploy to Vercel
+
+This repository includes a Vercel API function adapter and serves the storefront files as static assets. Order data is stored in Neon Postgres because Vercel function filesystems are not persistent.
+
+1. Create a Neon Postgres database and copy its connection string.
+2. Import this repository into Vercel. Vercel detects the `api/` function and serves the site files from the project root.
+3. Add these environment variables to the Vercel project:
+   - `DATABASE_URL`: the Neon Postgres connection string.
+   - `PUBLIC_BASE_URL`: the public HTTPS URL for the site.
+   - `HUBTEL_CLIENT_ID`, `HUBTEL_CLIENT_SECRET`, and `HUBTEL_MERCHANT_ACCOUNT_NUMBER`: credentials from Hubtel.
+   - `ADMIN_TOKEN`: a long, private owner access token.
+4. Redeploy after setting the variables. The app creates its `orders` table in Neon on its first API request.
+5. Configure the Hubtel callback URL as `https://your-domain.example/api/hubtel/callback`.
+
+The database role must be allowed to create the `orders` table. Keep the database URL, Hubtel credentials, and owner token in server-side Vercel environment variables only. The Vercel function returns a clear `503` API error if `DATABASE_URL` is missing rather than attempting to write orders to ephemeral storage.
 
 ## Enable Hubtel checkout
 
-In `.env`, set the merchant credentials issued by Hubtel:
+For local development, set the merchant credentials in `.env`:
 
 ```ini
 PUBLIC_BASE_URL=https://your-domain.example
@@ -25,9 +42,7 @@ HUBTEL_MERCHANT_ACCOUNT_NUMBER=your-merchant-account-number
 ADMIN_TOKEN=a-long-random-private-token
 ```
 
-Configure the Hubtel merchant account for its online checkout product. The app creates a hosted checkout session on the server, uses the configured public URL for the return, cancellation, and payment callback URLs, and checks the transaction status with Hubtel before marking an order paid. Merchant credentials and the owner token must only be set as server-side environment variables; never place them in frontend code or commit `.env`.
-
-Serve the app over HTTPS in production and use a Node host that supports a persistent disk. Order records are stored in `data/orders.json`; this simple file store is intended for a single app instance, so use persistent storage and regular backups. Do not deploy this as a static-only GitHub Pages site: payment initiation, status verification, and order management require the Node server.
+Configure the Hubtel merchant account for its online checkout product. The app creates a hosted checkout session on the server, uses the configured public URL for the return, cancellation, and payment callback URLs, and checks the transaction status with Hubtel before marking an order paid. Merchant credentials and the owner token must never be placed in frontend code or committed.
 
 ## Orders
 

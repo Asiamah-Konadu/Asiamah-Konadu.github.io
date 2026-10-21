@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js"
   },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
   "engines": {
     "node": ">=20.12.0"
   }
