@@ -1,13 +1,26 @@
 [
   {
     "route": "/",
-    "firstLoadUncompressedJsBytes": 483621,
+    "firstLoadUncompressedJsBytes": 483684,
     "firstLoadChunkPaths": [
       ".next/static/chunks/0umf92h1sb77c.js",
-      ".next/static/chunks/2wi_87qk6ljzo.js",
-      ".next/static/chunks/1x6obpmlu1_c2.js",
+      ".next/static/chunks/3-_vvy2jkei5p.js",
+      ".next/static/chunks/1ckvzn7sfprko.js",
       ".next/static/chunks/2r4s4h5xul1n-.js",
-      ".next/static/chunks/2khxl0v1q4i6n.js",
+      ".next/static/chunks/2gvu8dyrhibpa.js",
+      ".next/static/chunks/2e268anpfvdoc.js",
+      ".next/static/chunks/turbopack-3-ry682tkyiqk.js"
+    ]
+  },
+  {
+    "route": "/about",
+    "firstLoadUncompressedJsBytes": 478649,
+    "firstLoadChunkPaths": [
+      ".next/static/chunks/0umf92h1sb77c.js",
+      ".next/static/chunks/1-ng1xtih7qlz.js",
+      ".next/static/chunks/1ckvzn7sfprko.js",
+      ".next/static/chunks/2r4s4h5xul1n-.js",
+      ".next/static/chunks/2gvu8dyrhibpa.js",
       ".next/static/chunks/2e268anpfvdoc.js",
       ".next/static/chunks/turbopack-3-ry682tkyiqk.js"
     ]
@@ -18,9 +31,9 @@
     "firstLoadChunkPaths": [
       ".next/static/chunks/0umf92h1sb77c.js",
       ".next/static/chunks/3vfve4sbri-vb.js",
-      ".next/static/chunks/1x6obpmlu1_c2.js",
+      ".next/static/chunks/1ckvzn7sfprko.js",
       ".next/static/chunks/2r4s4h5xul1n-.js",
-      ".next/static/chunks/2khxl0v1q4i6n.js",
+      ".next/static/chunks/2gvu8dyrhibpa.js",
       ".next/static/chunks/2e268anpfvdoc.js",
       ".next/static/chunks/turbopack-3-ry682tkyiqk.js"
     ]
@@ -30,9 +43,9 @@
     "firstLoadUncompressedJsBytes": 456127,
     "firstLoadChunkPaths": [
       ".next/static/chunks/0umf92h1sb77c.js",
-      ".next/static/chunks/1x6obpmlu1_c2.js",
+      ".next/static/chunks/1ckvzn7sfprko.js",
       ".next/static/chunks/2r4s4h5xul1n-.js",
-      ".next/static/chunks/2khxl0v1q4i6n.js",
+      ".next/static/chunks/2gvu8dyrhibpa.js",
       ".next/static/chunks/2e268anpfvdoc.js",
       ".next/static/chunks/turbopack-3-ry682tkyiqk.js"
     ]

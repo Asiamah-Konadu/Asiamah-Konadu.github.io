@@ -197,7 +197,7 @@ export default function Storefront() {
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
           <a href="#products">Our mixes</a>
-          <a href="#story">Our story</a>
+          <Link href="/about">Our story</Link>
           <a href="#how-it-works">How to order</a>
           <a href="#track">Track order</a>
         </nav>
@@ -518,6 +518,7 @@ export default function Storefront() {
           <span>
             © {currentYear} Maxwellina Foods. Made with care in Ghana.
           </span>
+          <Link href="/about">About us</Link>
           <Link href="/admin">Owner sign in</Link>
           <a href="#home">Back to top ↑</a>
         </div>
