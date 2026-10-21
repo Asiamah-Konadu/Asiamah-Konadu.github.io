@@ -3,7 +3,13 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PRODUCT_CATALOG, STATUS_LABELS, formatPrice } from "@/lib/constants";
+import {
+  PRODUCT_CATALOG,
+  STATUS_LABELS,
+  WHATSAPP_ORDER_NUMBER,
+  formatPrice,
+  normalizePhone
+} from "@/lib/constants";
 import { OrderStatus } from "@/lib/types";
 
 export default function Storefront() {
@@ -19,7 +25,6 @@ export default function Storefront() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerLocation, setCustomerLocation] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
-  const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
 
   // Tracking form state
   const [trackingReference, setTrackingReference] = useState("");
@@ -112,40 +117,45 @@ export default function Storefront() {
     }
   }, [isCartOpen, isCheckoutOpen]);
 
-  async function handleCheckoutSubmit(e: React.FormEvent) {
+  function handleCheckoutSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const orderItems = cartEntries.map(([product, quantity]) => ({ product, quantity }));
-    if (orderItems.length === 0) {
+    if (cartEntries.length === 0) {
       setCheckoutError("Add a mix to your order before continuing.");
       return;
     }
 
-    setIsSubmittingCheckout(true);
-    setCheckoutError("");
-
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: customerName,
-          phone: customerPhone,
-          location: customerLocation,
-          items: orderItems
-        })
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "We couldn't start your checkout. Please try again.");
-      }
-
-      sessionStorage.setItem("maxwellina-last-order", result.reference);
-      window.location.assign(result.checkoutUrl);
-    } catch (err: any) {
-      setCheckoutError(err.message || "Failed to proceed to checkout.");
-      setIsSubmittingCheckout(false);
+    const name = customerName.trim();
+    const phone = normalizePhone(customerPhone);
+    if (name.length < 2 || !phone) {
+      setCheckoutError("Enter your name and a valid Ghanaian mobile number to continue.");
+      return;
     }
+
+    const orderSummary = cartEntries
+      .map(([key, quantity]) => {
+        const product = PRODUCT_CATALOG[key];
+        return product
+          ? `• ${quantity} × ${product.name} — ${formatPrice(product.price * quantity)}`
+          : "";
+      })
+      .filter(Boolean)
+      .join("\n");
+    const message = [
+      "Hello Maxwellina Foods! I'd like to place an order:",
+      "",
+      `Name: ${name}`,
+      `Phone: ${phone}`,
+      ...(customerLocation.trim() ? [`Delivery location: ${customerLocation.trim()}`] : []),
+      "",
+      orderSummary,
+      "",
+      `Product total: ${formatPrice(cartTotal)}`,
+      "Please confirm payment and delivery details. Thank you!"
+    ].join("\n");
+
+    window.location.assign(
+      `https://wa.me/${WHATSAPP_ORDER_NUMBER}?text=${encodeURIComponent(message)}`
+    );
   }
 
   async function handleTrackSubmit(e: React.FormEvent) {
@@ -177,7 +187,7 @@ export default function Storefront() {
     <>
       <div className="announcement">
         <span>GOOD FOOD, MADE SIMPLE</span>
-        <span>Order online · Pay securely with Hubtel</span>
+        <span>Order via WhatsApp · Confirm details with our team</span>
       </div>
 
       <header className="site-header">
@@ -417,8 +427,8 @@ export default function Storefront() {
             <article className="step-card">
               <span className="step-number">02</span>
               <span className="step-icon">♡</span>
-              <h3>Pay with Hubtel</h3>
-              <p>Place your order and complete your payment securely on Hubtel.</p>
+              <h3>Send your order on WhatsApp</h3>
+              <p>Review your order details and send them to us on WhatsApp.</p>
             </article>
             <article className="step-card">
               <span className="step-number">03</span>
@@ -439,7 +449,7 @@ export default function Storefront() {
               Wondering where<br />
               your order <em>is?</em>
             </h2>
-            <p>Enter the order code from checkout and the phone number you used when ordering.</p>
+            <p>For existing online orders, enter the order code and phone number used at checkout.</p>
           </div>
           <form className="track-form" onSubmit={handleTrackSubmit}>
             <label htmlFor="tracking-reference">Your order code</label>
@@ -604,9 +614,9 @@ export default function Storefront() {
                     setIsCheckoutOpen(true);
                   }}
                 >
-                  Continue to checkout <span aria-hidden="true">↗</span>
+                  Continue to WhatsApp <span aria-hidden="true">↗</span>
                 </button>
-                <p className="secure-note">Secure payment powered by Hubtel</p>
+                <p className="secure-note">Payment and delivery details will be confirmed in WhatsApp.</p>
               </div>
             </>
           )}
@@ -626,7 +636,7 @@ export default function Storefront() {
               <div className="dialog-header">
                 <div>
                   <p className="eyebrow">Almost time for something delicious</p>
-                  <h2 id="checkout-title">Where should we reach you?</h2>
+                  <h2 id="checkout-title">Your details for WhatsApp</h2>
                 </div>
                 <button
                   className="close-dialog"
@@ -683,8 +693,8 @@ export default function Storefront() {
               />
 
               <p className="delivery-note">
-                Product total only. We’ll confirm delivery arrangements and any fee with you before
-                dispatch.
+                Your order details will be prepared in WhatsApp. Tap Send there to place your order;
+                we’ll confirm payment and delivery arrangements in the chat.
               </p>
 
               {checkoutError && (
@@ -696,15 +706,10 @@ export default function Storefront() {
               <button
                 className="button checkout-submit"
                 type="submit"
-                disabled={isSubmittingCheckout}
               >
-                {isSubmittingCheckout ? (
-                  "Connecting to secure checkout…"
-                ) : (
-                  <>Continue to secure payment <span aria-hidden="true">↗</span></>
-                )}
+                Send order on WhatsApp <span aria-hidden="true">↗</span>
               </button>
-              <p className="secure-note">Your payment is securely handled by Hubtel.</p>
+              <p className="secure-note">WhatsApp will open with your order details ready to send.</p>
             </form>
           </div>
         </div>

@@ -32,6 +32,8 @@ export const PRODUCT_CATALOG: Record<string, CatalogItem> = {
   }
 };
 
+export const WHATSAPP_ORDER_NUMBER = "233553774381";
+
 export const ADMIN_STATUS_KEYS = [
   "preparing",
   "ready",

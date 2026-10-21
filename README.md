@@ -1,8 +1,8 @@
 # Maxwellina Foods
 
-A simple online store for Maxwellina Foods' bofrot and pancake mixes. Customers can order and track orders, and the owner can manage orders privately.
+A simple online store for Maxwellina Foods' bofrot and pancake mixes. Storefront checkout prepares an order message in WhatsApp, where customers and the owner confirm payment and delivery. The API also supports Hubtel checkout for integrations, and the owner can manage API orders privately.
 
-The customer-facing site can be built in Canva Code. Canva will call this project's API for orders. The API runs on Vercel, uses Prisma to save orders in Neon Postgres, and handles Hubtel checkout. Keep payment details and owner access on the server; never put them in Canva code.
+The customer-facing storefront sends customers to WhatsApp with their order details pre-filled. The API runs on Vercel, uses Prisma to save API orders in Neon Postgres, and supports Hubtel checkout. Keep payment details and owner access on the server; never put them in Canva code.
 
 ## Run locally
 
@@ -14,7 +14,7 @@ cp .env.example .env
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Without Hubtel credentials the catalogue and site remain available, but checkout asks customers to contact Maxwellina Foods. Local orders are stored in `data/orders.json` unless `DATABASE_URL` is set. With `DATABASE_URL`, Prisma stores them in Postgres.
+Open [http://localhost:3000](http://localhost:3000). Storefront checkout opens WhatsApp with the customer's order details; the order is placed when they send the message. Local API orders are stored in `data/orders.json` unless `DATABASE_URL` is set. With `DATABASE_URL`, Prisma stores them in Postgres.
 
 ## Deploy to Vercel
 
@@ -47,7 +47,7 @@ The Canva site should send customer requests to the Vercel API:
 
 Keep owner tools on the private `/admin.html` page. Do not put the owner token in Canva. Set `FRONTEND_ORIGINS` to the exact Canva site URL so browsers can call the API; add multiple URLs separated by commas if needed. Do not use `*` or put Hubtel credentials in Canva. We can verify whether Canva's published site supports these API requests once you share the project.
 
-## Enable Hubtel checkout
+## Enable Hubtel checkout for API integrations
 
 For local development, set the merchant credentials in `.env`:
 
@@ -65,6 +65,6 @@ Configure the Hubtel merchant account for its online checkout product. The serve
 
 - Each bofrot or pancake mix costs **GH₵35**. The server independently calculates prices from its product catalogue.
 - Checkout collects a customer name, Ghanaian mobile number, and optional location. Product payment excludes delivery: Maxwellina Foods confirms arrangements and any delivery fee with the customer separately.
-- Customers can track an order on the storefront using its `MW-...` order code and the same phone number supplied at checkout.
+- Customers can track API-created orders on the storefront using their `MW-...` order code and the same phone number supplied at checkout. WhatsApp storefront orders are confirmed directly in the chat.
 - The owner can sign in at `/admin.html` using `ADMIN_TOKEN`, review customer and order details, and update paid orders through preparation, collection/delivery, or cancellation statuses.
 - Fulfillment updates are not available until Hubtel payment has been verified. The admin token is kept in memory in the browser and is discarded when the owner signs out or closes the page.

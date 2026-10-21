@@ -238,22 +238,22 @@ h2 { margin-bottom: 0; font-size: clamp(36px,4.2vw,54px); line-height: 1.06; }
 }
 @media (max-width: 650px) {
   html { scroll-padding-top: 72px; }
-  .announcement { min-height: 28px; padding-inline: 5%; font-size: 7px; }
+  .announcement { min-height: 28px; gap: 8px; padding-inline: 5%; font-size: 7px; }
   .announcement span:last-child { font-size: 7px; }
   .site-header { height: 66px; padding-inline: 5%; }
   .brand img { width: 82px; height: 42px; }
   .main-nav { gap: 13px; }
   .main-nav a { font-size: 9px; }
   .main-nav a:nth-child(2), .main-nav a:nth-child(3) { display: none; }
+  .header-order { display: none; }
   .cart-toggle { gap: 5px; font-size: 8px; }
   .cart-toggle span { min-width: 18px; height: 18px; }
-  .header-order { padding: 10px 11px; font-size: 9px; }
-  .header-order span { margin-left: 5px; }
   .hero { min-height: 0; grid-template-columns: 1fr; gap: 32px; padding: 51px 7% 39px; }
   .hero-copy { padding: 0; }
   .hero .eyebrow { margin-bottom: 17px; font-size: 8px; }
   h1 { font-size: clamp(53px,14vw,76px); }
   .hero-description { max-width: 360px; margin-block: 18px 19px; font-size: 11px; }
+  .hero-actions { flex-wrap: wrap; gap: 16px; }
   .hero-note { margin-top: 25px; }
   .hero-visual { margin-left: 15px; padding: 10px 10px 25px; }
   .hero-food { height: clamp(250px,71vw,390px); }
@@ -270,6 +270,7 @@ h2 { margin-bottom: 0; font-size: clamp(36px,4.2vw,54px); line-height: 1.06; }
   .product-image { height: min(78vw,340px); }
   .product-info { padding: 19px; }
   .product-title-row h3 { font-size: 23px; }
+  .product-bottom { flex-wrap: wrap; gap: 8px; }
   .story-section { grid-template-columns: 1fr; }
   .story-photo { min-height: 280px; }
   .story-copy { padding: 43px 8% 44px; }
@@ -292,8 +293,14 @@ h2 { margin-bottom: 0; font-size: clamp(36px,4.2vw,54px); line-height: 1.06; }
   .footer-shop span { margin-left: 5px; }
   .footer-bottom { min-height: 58px; flex-wrap: wrap; justify-content: space-between; padding-block: 11px; font-size: 7px; }
   .footer-bottom span { flex-basis: 100%; }
-  .cart-drawer { padding: 22px; }
+  .cart-drawer { padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom)); }
   .checkout-form { padding: 22px; }
+  .modal-backdrop { align-items: flex-start; padding: 8px; }
+  .checkout-modal { max-height: calc(100dvh - 16px); overscroll-behavior: contain; }
+  .checkout-form input, .checkout-form textarea { min-height: 44px; font-size: 16px; }
+  .checkout-form textarea { min-height: 72px; }
+  .checkout-submit, .checkout-button { min-height: 48px; }
+  .toast { right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); left: 14px; max-width: none; }
   .admin-main { width: 90%; padding-top: 41px; }
   .admin-orders-heading { align-items: start; flex-direction: column; }
   .order-card { padding: 15px; }
