@@ -82,6 +82,20 @@ export default function AboutPage() {
       </main>
 
       <footer className="site-footer">
+        <div className="footer-contact">
+          <a href="tel:+233553774381">Call us: 0553774381</a>
+          <nav aria-label="Social media">
+            <a href="https://www.tiktok.com/@maxwellinafoods" target="_blank" rel="noreferrer">
+              TikTok: @maxwellinafoods
+            </a>
+            <a href="https://www.instagram.com/maxwellina_foods" target="_blank" rel="noreferrer">
+              Instagram: @maxwellina_foods
+            </a>
+            <a href="https://www.facebook.com/search/top/?q=Maxwellina%20Owusu" target="_blank" rel="noreferrer">
+              Facebook: Maxwellina Owusu
+            </a>
+          </nav>
+        </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Maxwellina Foods. Made with care in Ghana.</span>
           <Link href="/">Shop</Link>
