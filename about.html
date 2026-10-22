@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us — Maxwellina Foods</title>
+  <meta name="description" content="Meet the owner behind Maxwellina Foods and discover our love for simple, homemade goodness.">
+  <link rel="icon" type="image/svg+xml" href="images/logo.svg">
+  
+  <!-- Google Fonts: DM Sans & Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Announcement Bar -->
+  <div class="announcement">
+    <span>GOOD FOOD, MADE SIMPLE</span>
+    <span>Made with care in Ghana</span>
+  </div>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Maxwellina Foods home">
+      <img src="images/logo.svg" alt="Maxwellina Foods" width="105" height="49">
+    </a>
+
+    <nav class="main-nav about-nav" aria-label="Main navigation">
+      <a href="index.html">Home</a>
+      <a href="index.html#products">Our mixes</a>
+    </nav>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Open navigation menu">
+      <span aria-hidden="true">☰</span>
+      <span>Menu</span>
+    </button>
+
+    <a class="header-order" href="index.html#products">
+      Shop the mixes <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <!-- Mobile Menu Drawer -->
+  <div class="mobile-menu-layer" id="mobile-menu-layer">
+    <button class="mobile-menu-backdrop" id="mobile-menu-backdrop" type="button" aria-label="Close navigation menu"></button>
+    <aside class="mobile-menu-panel" id="mobile-navigation">
+      <div class="mobile-menu-heading">
+        <span>Explore Maxwellina Foods</span>
+        <button id="close-mobile-menu" type="button" aria-label="Close navigation menu">×</button>
+      </div>
+      <nav aria-label="Mobile navigation">
+        <a href="index.html">Home <span aria-hidden="true">↗</span></a>
+        <a href="index.html#products">Our mixes <span aria-hidden="true">↗</span></a>
+        <a href="about.html">Our story <span aria-hidden="true">↗</span></a>
+      </nav>
+    </aside>
+  </div>
+
+  <!-- About Page Content -->
+  <main class="about-page">
+    <section class="about-hero">
+      <div class="about-copy">
+        <p class="eyebrow">
+          <span class="eyebrow-line"></span> The person behind the goodness
+        </p>
+        <h1>
+          Homemade goodness,<br>
+          <em>made with care.</em>
+        </h1>
+        <p class="about-intro">
+          Maxwellina Foods is built around a simple belief: good food should bring people
+          together, without making the preparation complicated.
+        </p>
+        <p>
+          Our bofrot and pancake mixes make it easier to share familiar favourites at home.
+          Choose a mix, add a little care, and make room for the moments around the table.
+        </p>
+        <a class="button button-dark" href="index.html#products">
+          Explore our mixes <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+      <figure class="about-portrait">
+        <img
+          src="images/owner.jpg"
+          alt="The owner of Maxwellina Foods"
+          width="720"
+          height="1280"
+        >
+        <figcaption>Maxwellina Foods · Made with care in Ghana</figcaption>
+      </figure>
+    </section>
+
+    <section class="about-values" aria-labelledby="about-values-title">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-line"></span> What matters to us</p>
+        <h2 id="about-values-title">A little less fuss.<br><em>A lot more together.</em></h2>
+      </div>
+      <p>
+        From a quiet breakfast to a table full of family, we want Maxwellina mixes to make
+        homemade moments feel more within reach. That is the care we put into every pack.
+      </p>
+    </section>
+
+    <section class="about-signoff">
+      <img src="images/logo.svg" alt="Maxwellina Foods" width="115" height="54">
+      <p>Thank you for making a place for us at your table.</p>
+      <a class="text-link" href="index.html">
+        Back to the shop <span aria-hidden="true">↗</span>
+      </a>
+    </section>
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="footer-contact">
+      <a href="tel:+233553774381">Call us: 0553774381</a>
+      <nav aria-label="Social media">
+        <a href="https://www.tiktok.com/@maxwellinafoods" target="_blank" rel="noreferrer">
+          TikTok: @maxwellinafoods
+        </a>
+        <a href="https://www.instagram.com/maxwellina_foods" target="_blank" rel="noreferrer">
+          Instagram: @maxwellina_foods
+        </a>
+        <a href="https://www.facebook.com/search/top/?q=Maxwellina%20Owusu" target="_blank" rel="noreferrer">
+          Facebook: Maxwellina Owusu
+        </a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Maxwellina Foods. Made with care in Ghana.</span>
+      <a href="index.html">Shop</a>
+    </div>
+  </footer>
+
+  <script>
+    // Minimal mobile menu logic for about page
+    const menuToggle = document.getElementById("mobile-menu-toggle");
+    const menuLayer = document.getElementById("mobile-menu-layer");
+    const menuClose = document.getElementById("close-mobile-menu");
+    const menuBackdrop = document.getElementById("mobile-menu-backdrop");
+
+    function openMenu() {
+      if (menuLayer) menuLayer.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    }
+    function closeMenu() {
+      if (menuLayer) menuLayer.classList.remove("is-open");
+      document.body.style.overflow = "";
+    }
+
+    if (menuToggle) menuToggle.addEventListener("click", openMenu);
+    if (menuClose) menuClose.addEventListener("click", closeMenu);
+    if (menuBackdrop) menuBackdrop.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeMenu();
+    });
+  </script>
+</body>
+</html>

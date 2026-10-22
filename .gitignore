@@ -1,8 +1,5 @@
-.env*
-data/
-node_modules/
-.next/
-next-env.d.ts
-out/
-build/
-npm-debug.log*
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
